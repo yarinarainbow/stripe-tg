@@ -1,0 +1,19 @@
+{
+  "name": "stripe-tg",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "kun3741",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "node-telegram-bot-api": "^0.66.0",
+    "stripe": "^19.1.0"
+  }
+}

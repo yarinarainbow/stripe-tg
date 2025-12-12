@@ -14,7 +14,7 @@ const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const pdfPath = path.join(__dirname, "pdf/Shopping Guide.pdf");
+const pdfPath = path.join(__dirname, "pdf/The Party Capsule.pdf");
 
 console.log("🚀 Telegram-бот і сервер стартують...");
 console.log("✅ SERVER_URL:", process.env.SERVER_URL);
@@ -92,7 +92,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
     
     bot
       .sendDocument(finalChatId, pdfPath, {
-        caption: "✅ Дякую за оплату! 💌\nОсь твій Autumn Winter Shopping Guide 25/26",
+        caption: "✅ Дякую за оплату! 💌\nОсь твій The Party Capsule",
       })
       .then(() => console.log("🎉 PDF успішно надіслано користувачу!"))
       .catch((err) => {
@@ -125,7 +125,7 @@ bot.onText(/\/start/, async (msg) => {
           price_data: {
             currency: "eur",
             product_data: {
-              name: "Autumn Winter Shopping Guide 25/26",
+              name: "The Party Capsule",
             },
             unit_amount: amount,
           },
@@ -142,7 +142,7 @@ bot.onText(/\/start/, async (msg) => {
 
     await bot.sendMessage(
       chatId,
-      `Привіт 👋\nНатисни кнопку нижче, щоб оплатити «Autumn Winter Shopping Guide 25/26». Після оплати я надішлю PDF-файл прямо сюди в чат 💌`,
+      `Привіт 👋\nНатисни кнопку нижче, щоб оплатити «The Party Capsule». Після оплати я надішлю PDF-файл прямо сюди в чат 💌`,
       {
         reply_markup: {
           inline_keyboard: [

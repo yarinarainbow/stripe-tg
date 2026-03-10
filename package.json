@@ -1,19 +1,20 @@
 {
-  "name": "stripe-tg",
+  "name": "ya-sell-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Telegram bot for selling access to premium chats via Stripe",
   "license": "ISC",
   "author": "kun3741",
-  "type": "module",
-  "main": "index.js",
+  "type": "commonjs",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "express": "^5.1.0",
-    "node-telegram-bot-api": "^0.66.0",
-    "stripe": "^19.1.0"
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5",
+    "stripe": "^17.5.0",
+    "telegraf": "^4.16.3"
   }
 }

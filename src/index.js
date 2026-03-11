@@ -13,16 +13,24 @@ async function main() {
     process.exit(1);
   }
 
-  // ─── 2. Launch the Telegram bot (long-polling) ───────────
-  await bot.launch();
-  console.log('🤖 Telegram bot started (polling)');
-
-  // ─── 3. Start the Express webhook server ─────────────────
+  // ─── 2. Start the Express webhook server ─────────────────
+  // Start the webhook server FIRST so Railway sees a healthy app
   const app = createServer(bot);
   app.listen(config.PORT, () => {
     console.log(`🌐 Webhook server listening on port ${config.PORT}`);
     console.log(`   Stripe webhook URL: ${config.SERVER_URL}/webhook`);
   });
+
+  // ─── 3. Launch the Telegram bot (long-polling) ───────────
+  try {
+    await bot.launch();
+    console.log('🤖 Telegram bot started (polling)');
+  } catch (err) {
+    console.error('❌ bot.launch() failed:', err.message);
+    console.error(err);
+    // Don't exit — the webhook server is still running
+    // and can process Stripe payments
+  }
 
   // ─── Graceful shutdown ───────────────────────────────────
   const shutdown = (signal) => {

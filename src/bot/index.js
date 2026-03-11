@@ -22,7 +22,7 @@ const IMG_COURSE = fs.existsSync(path.join(IMG_DIR, 'course.JPG'))
 
 const MAIN_GREETING =
   'Добро пожаловать! 🤍\n\n' +
-  'Здесь вы можете приобрести доступ к закрытому клубу.\n\n' +
+  'Здесь вы можете приобрести доступ к закрытому клубу или PDF-гайд.\n\n' +
   'Выберите продукт ниже 👇';
 
 const CLUB_GREETING =
@@ -182,4 +182,3 @@ bot.action('back_to_club', async (ctx) => {
 });
 
 module.exports = bot;
-

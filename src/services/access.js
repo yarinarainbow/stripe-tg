@@ -6,10 +6,76 @@ const config = require('../config');
 const PDF_PATH = path.join(__dirname, '..', '..', 'public', 'The Party Capsule.pdf');
 
 /**
- * Generate single-use invite links and send them to the user.
+ * Try to add a user directly to a chat.
+ * If the user is already a member, returns { added: true, alreadyMember: true }.
+ * If added successfully, returns { added: true }.
+ * If unable to add, falls back to creating a single-use invite link.
+ *
+ * @param {import('telegraf').Telegram} telegram
+ * @param {string|number} chatId
+ * @param {number} telegramId
+ * @returns {Promise<{ added: boolean, alreadyMember?: boolean, inviteLink?: string|null }>}
+ */
+async function addUserToChat(telegram, chatId, telegramId) {
+  // 1. Check if the user is already a member
+  try {
+    const member = await telegram.getChatMember(chatId, telegramId);
+    if (['member', 'administrator', 'creator'].includes(member.status)) {
+      console.log(`ℹ️  User ${telegramId} is already a member of ${chatId}`);
+      return { added: true, alreadyMember: true };
+    }
+  } catch (err) {
+    // getChatMember can throw if user was never in the chat — that's fine
+    console.log(`ℹ️  getChatMember for ${telegramId} in ${chatId}: ${err.message}`);
+  }
+
+  // 2. Try to unban (in case previously banned/left)
+  try {
+    await telegram.unbanChatMember(chatId, telegramId, { only_if_banned: true });
+    console.log(`ℹ️  Unbanned user ${telegramId} in ${chatId} (only_if_banned)`);
+  } catch (err) {
+    console.log(`ℹ️  unbanChatMember for ${telegramId} in ${chatId}: ${err.message}`);
+  }
+
+  // 3. Try to approve a pending join request (if any)
+  try {
+    await telegram.approveChatJoinRequest(chatId, telegramId);
+    console.log(`✅ Approved join request for ${telegramId} in ${chatId}`);
+    return { added: true };
+  } catch (err) {
+    console.log(`ℹ️  approveChatJoinRequest for ${telegramId} in ${chatId}: ${err.message}`);
+  }
+
+  // 4. Check once more if the user is now a member (unban may have restored them)
+  try {
+    const member = await telegram.getChatMember(chatId, telegramId);
+    if (['member', 'administrator', 'creator'].includes(member.status)) {
+      console.log(`✅ User ${telegramId} is now a member of ${chatId} after unban`);
+      return { added: true };
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  // 5. Could not add directly → create a single-use invite link
+  try {
+    const invite = await telegram.createChatInviteLink(chatId, {
+      member_limit: 1,
+      name: `Invite for ${telegramId}`,
+    });
+    console.log(`🔗 Created single-use invite for ${telegramId} in ${chatId}`);
+    return { added: false, inviteLink: invite.invite_link };
+  } catch (err) {
+    console.error(`❌ Failed to create invite link for ${chatId}:`, err.message);
+    return { added: false, inviteLink: null };
+  }
+}
+
+/**
+ * Grant access to channels/chats after successful payment.
  *
  * @param {import('telegraf').Telegram} telegram – bot.telegram instance
- * @param {number}  telegramId  – Telegram user ID to send links to
+ * @param {number}  telegramId  – Telegram user ID
  * @param {string}  tariffKey   – "level1" | "level2" | "course"
  */
 async function grantAccess(telegram, telegramId, tariffKey) {
@@ -18,7 +84,7 @@ async function grantAccess(telegram, telegramId, tariffKey) {
     return sendCourse(telegram, telegramId);
   }
 
-  // ─── Club: generate invite links ────────────────────────
+  // ─── Club: add user to channels ──────────────────────────
   const chatMap = {
     level1: [
       { chatId: config.CHAT_ID_INFO, label: 'The Classy Club' },
@@ -32,46 +98,39 @@ async function grantAccess(telegram, telegramId, tariffKey) {
   const chats = chatMap[tariffKey];
   if (!chats) throw new Error(`Unknown tariff key: ${tariffKey}`);
 
-  const links = [];
+  const results = [];
 
   for (const { chatId, label } of chats) {
-    try {
-      const invite = await telegram.createChatInviteLink(chatId, {
-        member_limit: 1,
-        name: `Invite for ${telegramId} – ${tariffKey}`,
-      });
-      links.push({ label, url: invite.invite_link });
-    } catch (err) {
-      console.error(
-        `❌ Failed to create invite link for chat ${chatId}:`,
-        err.message,
-      );
-      await telegram.sendMessage(
-        telegramId,
-        `⚠️ Не удалось создать приглашение для «${label}». ` +
-          'Пожалуйста, обратитесь в поддержку.',
-      );
-    }
+    const result = await addUserToChat(telegram, chatId, telegramId);
+    results.push({ label, ...result });
   }
 
-  if (links.length === 0) return;
+  // ─── Build the message to send to the user ───────────────
+  const addedDirectly = results.filter((r) => r.added);
+  const withLinks = results.filter((r) => !r.added && r.inviteLink);
+  const failed = results.filter((r) => !r.added && !r.inviteLink);
 
   let message = 'Спасибо за покупку 🤍\n\n';
 
-  if (tariffKey === 'level1') {
-    message += `Вот ссылка для входа в The Classy Club:\n${links[0].url}`;
-  } else {
-    const clubLink = links.find((l) => l.label === 'The Classy Club');
-    const questionsLink = links.find((l) => l.label !== 'The Classy Club');
-    if (clubLink) {
-      message += `Вот ссылка для входа в The Classy Club:\n${clubLink.url}`;
-    }
-    if (questionsLink) {
-      message += `\n\nСсылка на канал для вопросов и общения:\n${questionsLink.url}`;
-    }
+  if (addedDirectly.length > 0) {
+    const names = addedDirectly.map((r) => r.label).join(', ');
+    message += `Вы добавлены в: ${names}\n\n`;
   }
 
-  message += '\n\nСтарт клуба — 16 марта.';
+  if (withLinks.length > 0) {
+    message += 'Перейдите по одноразовой ссылке для входа:\n\n';
+    for (const { label, inviteLink } of withLinks) {
+      message += `${label}:\n${inviteLink}\n\n`;
+    }
+    message += '⚠️ Ссылка действует только один раз.\n\n';
+  }
+
+  if (failed.length > 0) {
+    const names = failed.map((r) => r.label).join(', ');
+    message += `⚠️ Не удалось создать приглашение для: ${names}. Пожалуйста, обратитесь в поддержку.\n\n`;
+  }
+
+  message += 'Старт клуба — 16 марта.';
   await telegram.sendMessage(telegramId, message);
 }
 

@@ -130,7 +130,7 @@ async function grantAccess(telegram, telegramId, tariffKey) {
     message += `⚠️ Не удалось создать приглашение для: ${names}. Пожалуйста, обратитесь в поддержку.\n\n`;
   }
 
-  message += 'Старт клуба — 16 марта.';
+  message += 'Старт клуба — 23 марта.';
   await telegram.sendMessage(telegramId, message);
 }
 

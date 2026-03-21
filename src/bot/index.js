@@ -181,4 +181,20 @@ bot.action('back_to_club', async (ctx) => {
   }
 });
 
+bot.on('new_chat_members', async (ctx) => {
+  try {
+    await ctx.deleteMessage();
+  } catch (err) {
+    console.error('❌ Помилка видалення повідомлення про вхід:', err);
+  }
+});
+
+bot.on('left_chat_member', async (ctx) => {
+  try {
+    await ctx.deleteMessage();
+  } catch (err) {
+    console.error('❌ Помилка видалення повідомлення про вихід:', err);
+  }
+});
+
 module.exports = bot;
